@@ -1,0 +1,81 @@
+micronaut:
+  application:
+    name: quick-paste
+  server:
+    port: 8080
+    max-request-size: 600mb
+    multipart:
+      enabled: true
+      disk: true
+      max-file-size: 600mb
+  router:
+    static-resources:
+      default:
+        enabled: true
+        mapping: /**
+        paths: classpath:static
+  http:
+    client:
+      read-timeout: 30s
+  serde:
+    serialization:
+      # The API contract always includes empty arrays and explicit nulls (SPEC §8.2).
+      inclusion: ALWAYS
+
+datasources:
+  default:
+    url: ${QP_DB_URL:`jdbc:postgresql://localhost:5432/quickpaste`}
+    username: ${QP_DB_USER:quickpaste}
+    password: ${QP_DB_PASS:quickpaste}
+    driver-class-name: org.postgresql.Driver
+    dialect: POSTGRES
+
+flyway:
+  datasources:
+    default:
+      enabled: true
+
+endpoints:
+  health:
+    # The custom /health controller (SPEC §12.1 shape) replaces the management endpoint.
+    enabled: false
+
+quickpaste:
+  public-url: ${QP_PUBLIC_URL:`http://localhost:8080`}
+  storage-dir: ${QP_STORAGE_DIR:/var/lib/quickpaste/blobs}
+  auth-mode: ${QP_AUTH_MODE:google}
+  local-password: ${QP_LOCAL_PASSWORD:}
+  # Number of trusted reverse proxies in front of the origin. 0 = trust none,
+  # use the socket peer (safe for bare-JAR/dev). docker-compose sets this to 1
+  # (Caddy); put 2 behind Cloudflare→Caddy. Client IP for login rate limiting is
+  # taken this many hops from the right of X-Forwarded-For, so a spoofed
+  # left-prepended value is ignored.
+  trusted-proxy-count: ${QP_TRUSTED_PROXY_COUNT:0}
+  google-client-id: ${QP_GOOGLE_CLIENT_ID:}
+  google-client-secret: ${QP_GOOGLE_CLIENT_SECRET:}
+  allowed-emails: ${QP_ALLOWED_EMAILS:}
+  session-secret: ${QP_SESSION_SECRET:}
+  session-ttl-hours: ${QP_SESSION_TTL_HOURS:720}
+  token-ttl-days: ${QP_TOKEN_TTL_DAYS:0}
+  clip-ttl-hours: ${QP_CLIP_TTL_HOURS:24}
+  file-ttl-hours: ${QP_FILE_TTL_HOURS:72}
+  max-text-kb: ${QP_MAX_TEXT_KB:256}
+  simple-upload-mb: ${QP_SIMPLE_UPLOAD_MB:20}
+  max-file-mb: ${QP_MAX_FILE_MB:512}
+  user-quota-mb: ${QP_USER_QUOTA_MB:2048}
+  dedup-window-sec: ${QP_DEDUP_WINDOW_SEC:10}
+  idempotency-ttl-sec: ${QP_IDEMPOTENCY_TTL_SEC:3600}
+  channel-max-members: ${QP_CHANNEL_MAX_MEMBERS:25}
+  max-ws-conn-per-user: ${QP_MAX_WS_CONN_PER_USER:10}
+  rate-limit-per-min: ${QP_RATE_LIMIT_PER_MIN:600}
+  login-rate-limit-per-min: ${QP_LOGIN_RATE_LIMIT_PER_MIN:10}
+  sweep-interval-min: ${QP_SWEEP_INTERVAL_MIN:15}
+  upload-idle-gc-hours: ${QP_UPLOAD_IDLE_GC_HOURS:24}
+  export-ttl-hours: ${QP_EXPORT_TTL_HOURS:24}
+  thumbnails-enabled: ${QP_THUMBNAILS_ENABLED:true}
+  thumbnail-max-px: ${QP_THUMBNAIL_MAX_PX:320}
+  vapid-public-key: ${QP_VAPID_PUBLIC_KEY:}
+  vapid-private-key: ${QP_VAPID_PRIVATE_KEY:}
+  vapid-subject: ${QP_VAPID_SUBJECT:}
+  dev-auth-bypass: ${QP_DEV_AUTH_BYPASS:false}
+  dev-user-email: ${QP_DEV_USER_EMAIL:dev@localhost}

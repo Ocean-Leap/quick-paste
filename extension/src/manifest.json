@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "quick-paste",
+  "version": "0.1.0",
+  "description": "Send to and read from your quick-paste clipboard sync from any tab.",
+  "icons": {
+    "16": "public/icon-16.png",
+    "48": "public/icon-48.png",
+    "128": "public/icon-128.png"
+  },
+  "action": {
+    "default_title": "quick-paste",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "public/icon-16.png",
+      "48": "public/icon-48.png",
+      "128": "public/icon-128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "options_page": "options.html",
+  "permissions": ["storage", "contextMenus", "notifications", "offscreen", "downloads", "clipboardRead", "activeTab", "scripting"],
+  "optional_host_permissions": ["https://*/*", "http://localhost/*", "http://127.0.0.1/*"],
+  "commands": {
+    "send-clipboard": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+V",
+        "mac": "Command+Shift+V"
+      },
+      "description": "Send clipboard to quick-paste"
+    }
+  }
+}

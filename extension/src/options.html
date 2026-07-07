@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>quick-paste settings</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="options">
+      <h1 class="wordmark">quick-paste</h1>
+      <p class="muted">Connect this browser to your quick-paste instance.</p>
+
+      <div class="field">
+        <label for="serverUrl">Server URL</label>
+        <input id="serverUrl" type="url" placeholder="https://paste.example.com" autocomplete="off" />
+        <span class="hint">The address you open quick-paste at.</span>
+      </div>
+
+      <div class="field">
+        <label for="token">API token</label>
+        <input id="token" type="password" placeholder="qp_xxxx.xxxxxxxx" autocomplete="off" />
+        <span class="hint">Create one in the quick-paste app → account menu → API tokens. Shown once.</span>
+      </div>
+
+      <div class="row">
+        <button id="test" class="btn">Test connection</button>
+      </div>
+      <div id="status" class="status-line mono" role="status"></div>
+
+      <div class="field" id="channelField" hidden>
+        <label for="defaultChannel">Default channel</label>
+        <select id="defaultChannel"></select>
+        <span class="hint">Where right-click and keyboard-shortcut sends go.</span>
+      </div>
+
+      <div class="field">
+        <label for="device">This device's label</label>
+        <input id="device" type="text" placeholder="chrome" />
+        <span class="hint">Shown on items you send, so you know where they came from.</span>
+      </div>
+
+      <div class="row">
+        <button id="save" class="btn primary">Save</button>
+      </div>
+      <div id="saved" class="status-line mono" role="status"></div>
+    </main>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

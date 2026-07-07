@@ -1,0 +1,69 @@
+# Reverse proxy in front of the quick-paste server (API + PWA + WebSocket).
+# Caddy is the only published entry point; cloudflared (compose profile
+# "tunnel") targets proxy:80 from inside the compose network.
+#
+# HTTPS-first on the LAN: :443 serves a Caddy-internal-CA certificate, and
+# `GET /qp-ca.crt` hands out the root CA so a device can trust it in one
+# download. Set QP_LAN_HTTPS_ONLY=true to bounce plain-HTTP LAN hits to HTTPS
+# (localhost and the Cloudflare tunnel, which forwards X-Forwarded-Proto=https,
+# are always exempt so neither the frictionless localhost trial nor the tunnel
+# is affected).
+{
+	# On-demand TLS is gated: Caddy asks the origin before issuing a cert for an
+	# SNI, and the origin only approves private/loopback/.local hosts — so random
+	# SNIs can't force unbounded certificate generation.
+	on_demand_tls {
+		ask http://server:8080/internal/tls-authorize
+	}
+}
+
+# Serves the internal-CA root cert for one-download trust on phones/laptops.
+(ca-download) {
+	handle /qp-ca.crt {
+		root * /data/caddy/pki/authorities/local
+		rewrite * /root.crt
+		header Content-Type application/x-x509-ca-cert
+		file_server
+	}
+}
+
+# The server is a single origin serving the PWA, /api, and /health, so no path
+# routing is needed. WebSocket upgrades (/api/stream) are proxied automatically,
+# and Caddy sets X-Forwarded-For/Proto, which the origin trusts (SPEC §9.1).
+#
+# Direct-domain deployment without the tunnel: replace ":80" with your domain
+# (e.g. `paste.example.com { ... }`) and Caddy provisions Let's Encrypt
+# certificates automatically.
+
+:80 {
+	import ca-download
+
+	# Enforce HTTPS on the LAN when opted in. Exempt: the tunnel (X-Forwarded-Proto
+	# already https) and localhost (already a secure context; no cert needed).
+	@enforce-https {
+		expression {env.QP_LAN_HTTPS_ONLY} == "true"
+		not header X-Forwarded-Proto https
+		not host localhost 127.0.0.1
+		not path /qp-ca.crt
+	}
+	redir @enforce-https https://{host}:{$QP_HTTPS_PORT:8443}{uri} 308
+
+	encode zstd gzip
+	reverse_proxy server:8080
+}
+
+# LAN HTTPS without a domain: Caddy's internal CA signs a local certificate.
+# Published as ${QP_HTTPS_PORT:-8443} by docker-compose. Browsers trust it after
+# you install the root CA (grab it from `/qp-ca.crt`; see README "Run on your
+# home WiFi"). Full PWA features (install, push, share target) require HTTPS.
+:443 {
+	import ca-download
+
+	# on_demand: mint a certificate for whatever name the device uses
+	# (e.g. https://mybox.local:8443) at first handshake.
+	tls internal {
+		on_demand
+	}
+	encode zstd gzip
+	reverse_proxy server:8080
+}

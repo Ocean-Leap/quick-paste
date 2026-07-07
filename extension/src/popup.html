@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>quick-paste</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="popup">
+      <header class="popup-head">
+        <span class="wordmark">quick-paste</span>
+        <select id="channel" aria-label="Channel" hidden></select>
+        <span class="spacer"></span>
+        <button id="settings" class="icon-btn" title="Settings" aria-label="Settings">⚙</button>
+      </header>
+
+      <div id="toast" class="toast" role="status" hidden></div>
+
+      <section class="composer" id="composer" hidden>
+        <textarea id="text" placeholder="Paste or type, then send…" rows="2"></textarea>
+        <div id="attachments" class="attachments"></div>
+        <div class="composer-row">
+          <button id="send" class="btn primary" disabled>Send</button>
+          <button id="attach" class="btn small">Attach file</button>
+          <input id="file" type="file" hidden />
+        </div>
+      </section>
+
+      <div id="stream" class="stream" aria-live="polite"></div>
+    </div>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

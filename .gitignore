@@ -1,0 +1,49 @@
+# --- Secrets / environment (NFR-4: never commit) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+cf-access-*.json
+
+# --- Local blob storage (QP_STORAGE_DIR) ---
+/blobs/
+/var/lib/quickpaste/
+
+# --- Java / Micronaut (server/) ---
+target/
+build/
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+*.class
+*.jar
+!**/gradle/wrapper/gradle-wrapper.jar
+hs_err_pid*
+
+# --- Node / Vite PWA (pwa/) ---
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.local
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Mac helper (Tauri, mac-helper/) ---
+mac-helper/src-tauri/target/
+
+# --- OS / editor cruft ---
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# --- Agent workspace (kept local, out of the public repo) ---
+.claude/
+.cursor/
+CLAUDE.md

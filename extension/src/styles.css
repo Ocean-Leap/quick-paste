@@ -1,0 +1,335 @@
+/* quick-paste extension — carbon/ink tokens shared with the PWA. Light default,
+ * dark via prefers-color-scheme. */
+
+:root {
+  --paper: #fafaf7;
+  --paper-raised: #ffffff;
+  --ink: #1c2030;
+  --ink-soft: #5a5f73;
+  --rule: #e3e2da;
+  --carbon: #3e2fbb;
+  --carbon-tint: #ece9fb;
+  --carbon-contrast: #ffffff;
+  --stamp: #c2351c;
+  --stamp-tint: #fbeae5;
+  --font-display: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #12141f;
+    --paper-raised: #191c2b;
+    --ink: #e9e9f2;
+    --ink-soft: #9ba0b5;
+    --rule: #262a3c;
+    --carbon: #8b7dff;
+    --carbon-tint: #232048;
+    --carbon-contrast: #12141f;
+    --stamp: #ff6a4d;
+    --stamp-tint: #3a1d15;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Class-level `display` rules below would otherwise beat the UA [hidden] rule,
+   so the `hidden` attribute must win explicitly. */
+[hidden] {
+  display: none !important;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.wordmark {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.muted {
+  color: var(--ink-soft);
+}
+
+.error {
+  color: var(--stamp);
+}
+
+:focus-visible {
+  outline: 2px solid var(--carbon);
+  outline-offset: 2px;
+}
+
+button {
+  font: inherit;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--rule);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--carbon-tint);
+  border-color: var(--carbon-tint);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.btn.primary {
+  background: var(--carbon);
+  border-color: var(--carbon);
+  color: var(--carbon-contrast);
+}
+
+.btn.primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.btn.small {
+  padding: 0.25rem 0.5rem;
+  font-size: 12px;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  background: var(--carbon-tint);
+  color: var(--ink);
+}
+
+.icon-btn.copied {
+  background: var(--carbon);
+  color: var(--carbon-contrast);
+}
+
+input[type='text'],
+input[type='url'],
+input[type='password'],
+select,
+textarea {
+  width: 100%;
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: 9px;
+  padding: 0.4rem 0.55rem;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 3.5rem;
+}
+
+/* ---- Popup ---- */
+
+.popup {
+  width: 360px;
+  max-height: 560px;
+  display: flex;
+  flex-direction: column;
+}
+
+.popup-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--rule);
+  position: sticky;
+  top: 0;
+  background: var(--paper);
+}
+
+.popup-head select {
+  width: auto;
+  flex: 1;
+  min-width: 0;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.composer {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.composer-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--paper-raised);
+}
+
+.chip-name {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip-thumb {
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.stream {
+  overflow-y: auto;
+  padding: 0.25rem 0.75rem 0.75rem;
+}
+
+.clip-row {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.clip-thumb {
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 6px;
+  object-fit: cover;
+  flex: 0 0 auto;
+  background: var(--carbon-tint);
+}
+
+.clip-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.clip-text {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+
+.clip-actions {
+  display: flex;
+  gap: 0.15rem;
+  flex: 0 0 auto;
+}
+
+.state {
+  padding: 1.5rem 0.75rem;
+  text-align: center;
+  color: var(--ink-soft);
+}
+
+.toast {
+  padding: 0.4rem 0.75rem;
+  font-size: 12px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.toast.ok {
+  color: var(--carbon);
+  background: var(--carbon-tint);
+}
+
+.toast.bad {
+  color: var(--stamp);
+  background: var(--stamp-tint);
+}
+
+/* ---- Options ---- */
+
+.options {
+  max-width: 460px;
+  margin: 2rem auto;
+  padding: 0 1.25rem 2rem;
+}
+
+.field {
+  margin: 0 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.field label {
+  font-weight: 600;
+}
+
+.field .hint {
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.status-line {
+  margin-top: 1rem;
+  min-height: 1.2rem;
+}

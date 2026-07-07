@@ -1,0 +1,64 @@
+plugins {
+    id 'com.gradleup.shadow' version '8.3.6'
+    id 'io.micronaut.application' version '4.5.3'
+}
+
+version = '0.1.0'
+group = 'com.quickpaste'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    annotationProcessor 'io.micronaut.data:micronaut-data-processor'
+    annotationProcessor 'io.micronaut.serde:micronaut-serde-processor'
+
+    implementation 'io.micronaut:micronaut-http-server-netty'
+    implementation 'io.micronaut:micronaut-http-client'
+    implementation 'io.micronaut:micronaut-websocket'
+    implementation 'io.micronaut.data:micronaut-data-jdbc'
+    implementation 'io.micronaut.sql:micronaut-jdbc-hikari'
+    implementation 'io.micronaut.flyway:micronaut-flyway'
+    implementation 'io.micronaut.serde:micronaut-serde-jackson'
+    implementation 'com.nimbusds:nimbus-jose-jwt:9.40'
+    implementation 'com.github.f4b6a3:ulid-creator:5.2.3'
+    implementation 'nl.martijndwars:web-push:5.1.2'
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+    // web-push declares its dependencies runtime-scope; httpcore and jose4j are
+    // needed at compile time for send()'s return and throws types.
+    implementation 'org.apache.httpcomponents:httpcore:4.4.16'
+    implementation 'org.bitbucket.b_c:jose4j:0.9.6'
+
+    runtimeOnly 'org.yaml:snakeyaml'
+    runtimeOnly 'org.flywaydb:flyway-database-postgresql'
+    runtimeOnly 'org.postgresql:postgresql'
+    runtimeOnly 'ch.qos.logback:logback-classic'
+    runtimeOnly 'net.logstash.logback:logstash-logback-encoder:8.0'
+
+    testImplementation 'io.micronaut.test:micronaut-test-junit5'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+    testImplementation 'org.testcontainers:postgresql:1.21.4'
+    testRuntimeOnly 'commons-codec:commons-codec:1.17.1'
+    testImplementation 'io.projectreactor:reactor-core'
+}
+
+application {
+    mainClass = 'com.quickpaste.Application'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    // Spec targets Java 17; compile 17-compatible bytecode with the installed JDK.
+    options.release.set(17)
+}
+
+micronaut {
+    runtime 'netty'
+    testRuntime 'junit5'
+    processing {
+        incremental true
+        annotations 'com.quickpaste.*'
+    }
+}

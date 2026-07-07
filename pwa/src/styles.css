@@ -1,0 +1,1214 @@
+/* quick-paste — paper-form design system. Light by default, dark via prefers-color-scheme.
+ *
+ * Tokens: paper (continuous surface), ink (text), rule (1px form dividers),
+ * carbon (primary / alive), stamp (destructive / dying).
+ * Contrast notes: light --stamp darkened #C8371D → #C2351C for ≥4.5:1 on
+ * --stamp-tint; --carbon-contrast / --stamp-contrast flip to dark ink in dark
+ * mode because white on #8B7DFF / #FF6A4D is < 4.5:1.
+ */
+
+:root {
+  --paper: #fafaf7;
+  --paper-raised: #ffffff;
+  --ink: #1c2030;
+  --ink-soft: #5a5f73;
+  --rule: #e3e2da;
+  --carbon: #3e2fbb;
+  --carbon-tint: #ece9fb;
+  --carbon-contrast: #ffffff;
+  --stamp: #c2351c;
+  --stamp-tint: #fbeae5;
+  --stamp-contrast: #ffffff;
+  --shadow-raised: 0 8px 32px rgb(0 0 0 / 0.1);
+  --font-display: 'Bricolage Grotesque Variable', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #12141f;
+    --paper-raised: #191c2b;
+    --ink: #e9e9f2;
+    --ink-soft: #9ba0b5;
+    --rule: #262a3c;
+    --carbon: #8b7dff;
+    --carbon-tint: #232048;
+    --carbon-contrast: #12141f;
+    --stamp: #ff6a4d;
+    --stamp-tint: #3a1d15;
+    --stamp-contrast: #12141f;
+    --shadow-raised: 0 8px 32px rgb(0 0 0 / 0.45);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  font-size: 1.4rem;
+}
+
+h2 {
+  font-size: 1.1rem;
+}
+
+h3 {
+  font-size: 0.98rem;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  letter-spacing: 0.01em;
+  background: var(--carbon-tint);
+  padding: 0.1em 0.35em;
+  border-radius: 5px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--carbon);
+  outline-offset: 2px;
+}
+
+.muted {
+  color: var(--ink-soft);
+}
+
+.error {
+  color: var(--stamp);
+  margin: 0.4rem 0 0;
+}
+
+.hint {
+  margin: 0.4rem 0 0;
+  color: var(--ink-soft);
+}
+
+.center {
+  text-align: center;
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* Machine facts speak mono — device labels, times, sizes, mimes, statuses. */
+.mono,
+.clip-meta,
+.badge,
+.conn,
+.toast,
+.member-info .muted,
+.token-row .muted,
+.chip-size,
+.composer-hint {
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+.badge {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  color: var(--ink-soft);
+  background: transparent;
+}
+
+.badge.pending {
+  border-color: transparent;
+  background: var(--stamp-tint);
+  color: var(--stamp);
+}
+
+/* ---- Buttons & inputs ---- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--carbon-tint);
+  border-color: var(--carbon-tint);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.btn.primary {
+  background: var(--carbon);
+  border-color: var(--carbon);
+  color: var(--carbon-contrast);
+}
+
+.btn.primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+  background: var(--carbon);
+  border-color: var(--carbon);
+}
+
+.btn.danger {
+  background: var(--stamp);
+  border-color: var(--stamp);
+  color: var(--stamp-contrast);
+}
+
+.btn.danger:hover:not(:disabled) {
+  filter: brightness(1.08);
+  background: var(--stamp);
+  border-color: var(--stamp);
+}
+
+.btn.danger-ghost {
+  color: var(--stamp);
+  border-color: transparent;
+  background: transparent;
+}
+
+/* The ever-present toolbar action rests quiet; red only on intent. */
+.stream-toolbar .btn.danger-ghost {
+  color: var(--ink-soft);
+}
+
+.stream-toolbar .btn.danger-ghost:hover:not(:disabled),
+.stream-toolbar .btn.danger-ghost:focus-visible {
+  color: var(--stamp);
+}
+
+.btn.danger-ghost:hover:not(:disabled) {
+  background: var(--stamp-tint);
+  border-color: var(--stamp-tint);
+}
+
+.btn.small {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.icon-btn:hover {
+  background: var(--carbon-tint);
+  color: var(--ink);
+}
+
+.icon-btn.copied {
+  background: var(--carbon);
+  color: var(--carbon-contrast);
+}
+
+input[type='text'],
+input[type='email'],
+select,
+textarea {
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 0.45rem 0.6rem;
+}
+
+textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 4.5rem;
+}
+
+progress {
+  flex: 1;
+  height: 0.5rem;
+  accent-color: var(--carbon);
+}
+
+/* ---- Paper surface: panels separated by rules, not floating cards ---- */
+
+.card {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 1.1rem 0;
+}
+
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.25rem 2rem;
+}
+
+/* Narrow: one centered column — the paper form reads top to bottom:
+   composer, then the stream, separated by rules. */
+.layout {
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.layout > * + * {
+  border-top: 1px solid var(--rule);
+}
+
+/* Wide: composer stays put on the left, the stream lives on the right
+   behind a vertical rule and scrolls past a sticky compose column. */
+@media (min-width: 1000px) {
+  .layout {
+    max-width: 1160px;
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    align-items: start;
+    column-gap: 0;
+  }
+
+  .layout > * + * {
+    border-top: 0;
+  }
+
+  .layout > .composer,
+  .layout > .channel-detail {
+    grid-column: 1;
+    padding-right: 2rem;
+  }
+
+  .layout > .composer {
+    position: sticky;
+    top: 4.4rem; /* clears the sticky top bar */
+  }
+
+  .layout > .channel-detail {
+    border-top: 1px solid var(--rule);
+  }
+
+  .layout > .stream {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    border-left: 1px solid var(--rule);
+    padding-left: 2rem;
+    min-height: 60vh;
+  }
+}
+
+/* ---- Top bar ---- */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 0;
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule);
+  flex-wrap: wrap;
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+
+/* Compact initial replaces the name on small screens. */
+.user-initial {
+  display: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--carbon-tint);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+/* One row on phones: shrink instead of wrapping. */
+@media (max-width: 599px) {
+  .topbar {
+    flex-wrap: nowrap;
+    gap: 0.45rem;
+  }
+
+  .topbar .channel-toggle {
+    min-width: 0;
+    flex: 0 1 auto;
+  }
+
+  .topbar .channel-toggle .dropdown-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 9rem;
+  }
+
+  .topbar .channel-toggle .badge {
+    display: none; /* type is visible inside the switcher menu */
+  }
+
+  .topbar .dropdown-toggle:not(.channel-toggle) .dropdown-label {
+    display: none;
+  }
+
+  .topbar .user-initial {
+    display: inline-flex;
+  }
+
+  .topbar .conn-word {
+    display: none; /* the dot alone carries the status; aria-label keeps it accessible */
+  }
+}
+
+/* Connection status: a mono word with a dot, far right. */
+.conn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+}
+
+.conn-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.conn-open {
+  color: var(--carbon);
+}
+
+.conn-connecting,
+.conn-reconnecting {
+  color: var(--stamp);
+}
+
+.conn-banner {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  color: var(--stamp);
+  background: var(--stamp-tint);
+  border-radius: 10px;
+  padding: 0.4rem 0.75rem;
+  margin-top: 0.75rem;
+  text-align: center;
+}
+
+/* ---- Dropdowns (raised surfaces) ---- */
+
+.dropdown {
+  position: relative;
+}
+
+.dropdown-toggle .dropdown-label {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.channel-toggle .dropdown-label {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  min-width: 14rem;
+  margin: 0;
+  padding: 0.3rem;
+  list-style: none;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  box-shadow: var(--shadow-raised);
+}
+
+.dropdown-menu-right {
+  left: auto;
+  right: 0;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-item:hover:not(:disabled),
+.menu-item.active {
+  background: var(--carbon-tint);
+}
+
+.menu-item .channel-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-static {
+  padding: 0.45rem 0.6rem;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menu-separator {
+  height: 1px;
+  margin: 0.3rem 0.2rem;
+  background: var(--rule);
+}
+
+/* ---- Lifeline: remaining life as a filled fraction of a 3px bar ---- */
+
+.lifeline {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--rule);
+  overflow: hidden;
+}
+
+.lifeline-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--carbon);
+  /* Quiet at rest so a column of fresh clips doesn't read as heavy borders;
+     full strength on hover and always when running low. */
+  opacity: 0.45;
+  transition: width 600ms ease, opacity 150ms ease;
+}
+
+.clip-row:hover .lifeline-fill {
+  opacity: 1;
+}
+
+.lifeline-fill.low {
+  background: var(--stamp);
+  opacity: 1;
+}
+
+/* Time label swaps to "expires in …" on row hover or tap. */
+.time-swap {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.t-exp {
+  display: none;
+}
+
+.clip-row:hover .t-rel,
+.time-swap.show-exp .t-rel {
+  display: none;
+}
+
+.clip-row:hover .t-exp,
+.time-swap.show-exp .t-exp {
+  display: inline;
+}
+
+/* ---- Composer (the anchor) ---- */
+
+/* While files drag over the window, the whole composer is the drop target. */
+.composer.dragging {
+  outline: 1.5px dashed var(--carbon);
+  outline-offset: -4px;
+  border-radius: 12px;
+  background: var(--carbon-tint);
+}
+
+.composer-input {
+  position: relative;
+}
+
+.composer-input textarea {
+  display: block;
+}
+
+.composer textarea {
+  font-size: 1rem;
+  padding: 0.7rem 2.8rem 0.7rem 0.8rem;
+}
+
+/* Clipboard reader, pinned inside the textarea's bottom-right corner. */
+.paste-btn {
+  position: absolute;
+  right: 0.35rem;
+  bottom: 0.35rem;
+  color: var(--ink-soft);
+}
+
+.paste-btn:hover {
+  color: var(--carbon);
+}
+
+.composer textarea::placeholder {
+  color: var(--ink-soft);
+}
+
+.composer textarea:focus {
+  outline: none;
+  border-color: var(--carbon);
+  box-shadow: 0 0 0 1px var(--carbon);
+}
+
+.composer-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+
+.composer-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+/* Staged attachments: chips between the textarea and the button row. */
+.attachment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attachment-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 100%;
+  padding: 0.3rem 0.3rem 0.3rem 0.5rem;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--paper-raised);
+}
+
+.attachment-chip.has-error {
+  border-color: var(--stamp);
+  background: var(--stamp-tint);
+}
+
+.chip-thumb {
+  display: block;
+  width: 2rem;
+  height: 2rem;
+  object-fit: cover;
+  border: 1px solid var(--rule);
+  border-radius: 7px;
+  background: var(--paper);
+}
+
+.chip-icon {
+  display: inline-flex;
+  color: var(--ink-soft);
+}
+
+.chip-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.chip-name {
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.chip-size {
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+}
+
+.chip-error {
+  font-size: 0.75rem;
+  color: var(--stamp);
+}
+
+.attachment-chip progress {
+  flex: none;
+  width: 6rem;
+  height: 0.35rem;
+  margin-top: 0.2rem;
+}
+
+.chip-remove {
+  width: 1.6rem;
+  height: 1.6rem;
+  flex: none;
+}
+
+.chip-remove:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ---- Thumbnails ---- */
+
+.clip-thumb {
+  display: block;
+  width: 2.25rem;
+  height: 2.25rem;
+  object-fit: cover;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--paper-raised);
+}
+
+/* ---- Stream (all clips; the first row carries the latest emphasis) ---- */
+
+.stream-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+  min-height: 2rem;
+}
+
+.stream-eyebrow,
+.latest-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.latest-eyebrow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.clip-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clip-row {
+  padding: 0.65rem 0 0;
+}
+
+.clip-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  transition: opacity 300ms ease;
+}
+
+/* Dying clips fade like carbon copies — never below 0.55, stays readable. */
+.clip-row.fading .clip-main {
+  opacity: 0.55;
+}
+
+.clip-row .lifeline {
+  margin-top: 0.6rem;
+}
+
+.clip-icon {
+  color: var(--ink-soft);
+  margin-top: 0.15rem;
+}
+
+.clip-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.clip-snippet {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.clip-file {
+  margin: 0;
+  word-break: break-all;
+}
+
+.clip-meta {
+  margin: 0.2rem 0 0;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+
+.clip-actions {
+  display: flex;
+  gap: 0.2rem;
+}
+
+/* The first row is the old hero, folded into the stream: eyebrow, larger
+   content, solid copy/download. */
+.latest-main {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+}
+
+.latest-text {
+  margin: 0.6rem 0 0;
+  padding: 0;
+  max-height: 16rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: 1.15em;
+}
+
+.latest-file {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.7rem 0 0;
+  font-size: 1.15em;
+  word-break: break-all;
+}
+
+.latest-file .muted {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+}
+
+.latest-file-name {
+  font-weight: 600;
+}
+
+.latest-thumb-wrap {
+  flex-basis: 100%;
+}
+
+.latest-thumb {
+  display: block;
+  max-width: 100%;
+  max-height: 11rem;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--paper-raised);
+}
+
+.latest-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.history-sentinel {
+  height: 1px;
+}
+
+/* New clip arrival: slide in, carbon-tint highlight decays to nothing. */
+.clip-row.arrived {
+  animation: clip-in 180ms ease-out, clip-glow 1.2s ease-out;
+}
+
+@keyframes clip-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes clip-glow {
+  from {
+    background-color: var(--carbon-tint);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+/* ---- Empty states ---- */
+
+.empty {
+  padding: 1.5rem 0;
+}
+
+.empty-headline {
+  font-family: var(--font-display);
+  font-weight: 650;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.3rem;
+}
+
+.empty p {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+/* ---- Channel detail & modal panels ---- */
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.panel-header h2 {
+  margin: 0;
+}
+
+.member-list,
+.token-list {
+  margin: 0.5rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.member-row,
+.token-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--rule);
+}
+
+.member-row:first-child,
+.token-row:first-child {
+  border-top: 0;
+}
+
+.member-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.member-info .muted {
+  font-size: 0.75rem;
+}
+
+.invite-form,
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.invite-form input,
+.form-row input[type='text'] {
+  flex: 1;
+  min-width: 10rem;
+}
+
+.panel-footer {
+  margin-top: 0.9rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--rule);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background: rgb(0 0 0 / 0.45);
+  overflow-y: auto;
+}
+
+.modal {
+  width: min(40rem, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  box-shadow: var(--shadow-raised);
+  padding: 1.25rem 1.4rem;
+}
+
+.modal section {
+  border-top: 1px solid var(--rule);
+  padding-top: 0.9rem;
+}
+
+.token-secret {
+  margin: 0.5rem 0;
+  padding: 0.6rem;
+  border: 1px solid var(--carbon);
+  border-radius: 10px;
+  background: var(--carbon-tint);
+}
+
+.token-secret p {
+  margin: 0 0 0.4rem;
+}
+
+.secret {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+/* ---- Toast ---- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 60;
+  font-size: 0.78rem;
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 0.45rem 0.8rem;
+  box-shadow: var(--shadow-raised);
+  animation: clip-in 180ms ease-out;
+}
+
+/* ---- Sign-in & bootstrap ---- */
+
+.signin {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.signin-card {
+  width: min(26rem, 100%);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.signin-card .wordmark {
+  font-size: 2.4rem;
+  line-height: 1.1;
+}
+
+.signin-card .btn {
+  align-self: center;
+}
+
+.signin-error {
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  background: var(--stamp-tint);
+  color: var(--stamp);
+  text-align: left;
+}
+
+.boot {
+  max-width: 40rem;
+  margin: 15vh auto 0;
+  padding: 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  align-items: stretch;
+}
+
+.boot .btn {
+  align-self: flex-start;
+}
+
+/* ---- Skeletons ---- */
+
+.skeleton {
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--rule) 25%, var(--carbon-tint) 50%, var(--rule) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+
+.skeleton-line {
+  height: 0.9rem;
+}
+
+.skeleton-line.short {
+  width: 40%;
+}
+
+.skeleton-block {
+  height: 5rem;
+}
+
+.history-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* ---- Mobile: composer docks to the bottom, chat-style ---- */
+
+@media (max-width: 899px) {
+  .composer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 45;
+    background: var(--paper);
+    border-top: 1px solid var(--rule);
+    padding: 0.7rem 1rem calc(0.7rem + env(safe-area-inset-bottom));
+    margin: 0;
+  }
+
+  .composer textarea {
+    min-height: 3.2rem;
+  }
+
+  .app {
+    padding-bottom: 12rem;
+  }
+
+  .composer-hint {
+    display: none;
+  }
+
+  .toast {
+    bottom: calc(12.5rem + env(safe-area-inset-bottom));
+  }
+
+  /* The fixed composer leaves the flow — no stray rule on what follows it. */
+  .composer + * {
+    border-top: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+  }
+}
+
+/* Local-mode sign-in form */
+.signin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+
+.signin-form input {
+  font-size: 1rem;
+}
