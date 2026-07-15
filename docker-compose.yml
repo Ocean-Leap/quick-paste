@@ -7,6 +7,7 @@ services:
     # pgvector-enabled PostgreSQL: the v3 Library's semantic search uses the
     # vector extension, created by the V1 migration.
     image: pgvector/pgvector:pg17
+    restart: unless-stopped
     environment:
       POSTGRES_DB: quickpaste
       POSTGRES_USER: quickpaste
@@ -62,6 +63,8 @@ services:
       QP_SWEEP_INTERVAL_MIN: ${QP_SWEEP_INTERVAL_MIN:-15}
       QP_THUMBNAILS_ENABLED: ${QP_THUMBNAILS_ENABLED:-true}
       QP_THUMBNAIL_MAX_PX: ${QP_THUMBNAIL_MAX_PX:-320}
+      QP_SINK_DELIVERY_INTERVAL_SEC: ${QP_SINK_DELIVERY_INTERVAL_SEC:-15}
+      QP_SINK_MAX_ATTEMPTS: ${QP_SINK_MAX_ATTEMPTS:-8}
       QP_VAPID_PUBLIC_KEY: ${QP_VAPID_PUBLIC_KEY:-}
       QP_VAPID_PRIVATE_KEY: ${QP_VAPID_PRIVATE_KEY:-}
       QP_VAPID_SUBJECT: ${QP_VAPID_SUBJECT:-}

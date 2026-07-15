@@ -6,6 +6,11 @@
 *.key
 cf-access-*.json
 
+# --- Personal overlays (external sink providers, private notes) ---
+# Public contract: docs/external-providers.md + SPEC §5.14. Do not push
+# private provider adapters to the public tree.
+/local/
+
 # --- Local blob storage (QP_STORAGE_DIR) ---
 /blobs/
 /var/lib/quickpaste/

@@ -130,8 +130,47 @@ client-side and sent as `origin` on every push (§5.8). The authenticated **user
 - **FR-7** A user can create a **shared** channel (becomes its `owner`).
 - **FR-8** A channel owner can invite users by email, remove members, and cancel pending invites; a member can leave a shared channel. The private channel cannot be left, shared, or deleted. Inviting an email that has no registered account yet is **admin-only** (FR-2).
 - **FR-9** An admin inviting an email not yet registered creates a **pending** membership that activates on that user's first successful login. Pending invites can be canceled via the membership endpoint (§8.2).
-- **FR-10** A channel owner can delete a shared channel; this cascades to its clips, files, and blobs (§5.7).
+- **FR-10** A channel owner can delete a shared **or external** channel; this cascades to its clips, files, blobs, and (for external) sink config (§5.7, §5.14).
 - **FR-11** Shared channel membership is capped at `QP_CHANNEL_MAX_MEMBERS`.
+
+### 5.14 External sink channels (provider extension point)
+
+An **external** channel is a personal, one-way **outbound sink**: text clips the
+owner pushes are stored locally (same TTL/dedup as other channels) **and**
+forwarded asynchronously to a configured external system. External channels are
+distinct from the in-app Library (Keep / §5.13): they do not auto-Keep, and
+there is **no inbound sync** from the remote system.
+
+**Status.** This section specifies the contract. The public tree documents how to
+add a provider (`docs/external-providers.md`); **no concrete provider is shipped
+in the public repo.** Personal adapters (private knowledge stores, etc.) stay
+out of source control under `local/` or an unpushed branch — see that doc.
+
+Providers are **compile-time** registrations (NFR-11 — no plugin runtime). Each
+provider supplies: create/validate config, map a text clip → outbound payload,
+and HTTP (or other) delivery with idempotency.
+
+- **FR-61** A user can create an **external** channel (`type=external`) with a
+  display name, `provider` id, and provider-specific config (at minimum a
+  **https** `baseUrl` on a public host — private/loopback/link-local targets
+  rejected as SSRF — and a bearer `token`). The channel is owner-only (no
+  invites, no leave). The token is stored encrypted at rest (AES-GCM; key from
+  `QP_SESSION_SECRET`); APIs return only a `tokenPrefix`, never the secret.
+- **FR-62** Text clips in an external channel are stored locally **and**
+  enqueued for delivery. The clip ULID is the delivery **idempotency key** so
+  retries never duplicate at the remote. Optional provider-specific kind/tags
+  may be supplied on create; semantics are defined by the provider.
+- **FR-63** File uploads and `type=file` clips are **rejected** on external
+  channels (422) unless a future provider explicitly documents file support.
+- **FR-64** Delivery is **asynchronous**: clip create returns immediately with
+  `delivery.status=pending` and never waits on outbound HTTP. A worker delivers
+  (no redirects), honors `429` + `Retry-After` when present, retries with
+  backoff up to `QP_SINK_MAX_ATTEMPTS`, and updates status to
+  `sent` / `deduped` / `failed`. Auth and validation failures are **terminal**
+  (not re-polled). Status is exposed on `ClipDto.delivery` and re-broadcast via
+  `clip.created` (client upserts by id) when it changes.
+- **FR-65** The owner can rotate sink credentials / base URL / provider options
+  via `PATCH /api/channels/{id}/sink`, and delete the external channel (FR-10).
 
 ### 5.3 Clipboard text sync
 
@@ -342,9 +381,35 @@ flowchart LR
 |---|---|---|
 | `id` | CHAR(26) | ULID, PK |
 | `name` | VARCHAR(64) | display name |
-| `type` | VARCHAR (`private`,`shared`) | |
+| `type` | VARCHAR (`private`,`shared`,`external`) | |
 | `created_by` | CHAR(26) | FK → `users.id` |
 | `created_at` | TIMESTAMPTZ(3) | |
+
+**`channel_sinks`** — outbound integration config for `type=external` channels.
+
+| Column | Type | Notes |
+|---|---|---|
+| `channel_id` | CHAR(26) | PK, FK → `channels.id` ON DELETE CASCADE |
+| `provider` | VARCHAR | Compile-time provider id (see `docs/external-providers.md`) |
+| `base_url` | VARCHAR(512) | https origin (or provider-defined base); SSRF-checked |
+| `token_ciphertext` | TEXT | AES-GCM blob (key from `QP_SESSION_SECRET`); never logged/returned |
+| `token_prefix` | VARCHAR(16) | display hint (e.g. first 12 chars) |
+| `default_tags` | TEXT NULL | JSON string array, ≤ 32 tags (provider-optional) |
+| `created_at` / `updated_at` | TIMESTAMPTZ(3) | |
+
+**`clip_deliveries`** — per-clip outbound delivery ledger for external sinks.
+
+| Column | Type | Notes |
+|---|---|---|
+| `clip_id` | CHAR(26) | PK, FK → `clips.id` ON DELETE CASCADE |
+| `channel_id` | CHAR(26) | FK → `channels.id` ON DELETE CASCADE; indexed |
+| `status` | VARCHAR (`pending`,`sent`,`deduped`,`failed`) | |
+| `kind` | VARCHAR NULL | Provider-specific kind label when applicable |
+| `external_item_id` | VARCHAR(64) NULL | Remote id when the provider returns one |
+| `attempts` | INT | |
+| `next_attempt_at` | TIMESTAMPTZ(3) | |
+| `last_error` | VARCHAR(512) NULL | metadata only — never payloads/tokens |
+| `updated_at` | TIMESTAMPTZ(3) | |
 
 **`channel_members`**
 
@@ -502,17 +567,18 @@ channel membership (§9.5). All responses are JSON unless noted.
 | Method | Path | Purpose | Response |
 |---|---|---|---|
 | GET | `/api/channels` | List channels the user belongs to | `200 {items}` |
-| POST | `/api/channels` | Create a shared channel `{name}` | `201 {channel}` |
-| DELETE | `/api/channels/{id}` | Delete a shared channel (owner only, cascade) | `204` |
+| POST | `/api/channels` | Create a shared channel `{name}` **or** external sink `{name, type:"external", provider, baseUrl, token, defaultTags?}` (FR-61; provider must be registered) | `201 {channel}` |
+| DELETE | `/api/channels/{id}` | Delete a shared or external channel (owner only, cascade) | `204` |
+| PATCH | `/api/channels/{id}/sink` | Rotate sink config (owner; external only) `{token?, baseUrl?, defaultTags?}` | `200 {channel}` |
 | GET | `/api/channels/{id}/members` | List members (member only) | `200 {items}` |
-| POST | `/api/channels/{id}/members` | Invite by email (owner only; new emails admin-only, FR-2) | `201 {member}` |
+| POST | `/api/channels/{id}/members` | Invite by email (owner only; new emails admin-only, FR-2); rejected for private/external | `201 {member}` |
 | DELETE | `/api/channels/{id}/members/{memberId}` | Remove member / leave / cancel pending invite | `204` |
 
 **Clips & files (scoped to a channel)**
 
 | Method | Path | Purpose | Response |
 |---|---|---|---|
-| POST | `/api/channels/{cid}/clips` | Create clip `{type, text?, fileId?, origin, idempotencyKey?}` | `201 {clip}` |
+| POST | `/api/channels/{cid}/clips` | Create clip `{type, text?, fileId?, origin, idempotencyKey?, sinkKind?}`; external channels reject `type=file` and enqueue sink delivery (FR-61–64) | `201 {clip}` (`delivery?` when external) |
 | GET | `/api/channels/{cid}/clips/latest` | Latest clip | `200 {clip}` or `204` |
 | GET | `/api/channels/{cid}/clips` | List (`afterId?`, `beforeId?`, `limit?`=50, `type?`) | `200 {items, nextCursor?}` |
 | DELETE | `/api/channels/{cid}/clips/{id}` | Delete one clip | `204` |
@@ -997,6 +1063,8 @@ Environment variables (with defaults):
 | `QP_VAPID_SUBJECT` | — | VAPID subject (`mailto:` contact) |
 | `QP_THUMBNAILS_ENABLED` | `true` | Image thumbnail generation |
 | `QP_THUMBNAIL_MAX_PX` | `320` | Longest thumbnail edge in pixels |
+| `QP_SINK_DELIVERY_INTERVAL_SEC` | `15` | How often the sink delivery worker polls due rows (FR-64) |
+| `QP_SINK_MAX_ATTEMPTS` | `8` | Max outbound delivery attempts before `failed` |
 | `QP_CF_ACCESS_ENABLED` | `false` | Optional Cloudflare Access outer layer |
 | `QP_HTTPS_PORT` | `8443` | Host port for Caddy's LAN HTTPS listener (internal-CA cert; root CA served at `/qp-ca.crt`) |
 | `QP_LAN_HTTPS_ONLY` | `false` | Redirect plain-HTTP LAN hits to HTTPS (localhost + Cloudflare tunnel exempt; `/qp-ca.crt` stays on HTTP) |
@@ -1073,6 +1141,7 @@ Environment variables (with defaults):
 - **D-12 — Library is plaintext-on-server.** Items are stored unencrypted so search, `/api/resolve`, and enrichment work; the reserved E2E envelope stays a **Stream-only** concept. A client-side-encrypted Library is a different product mode, out of scope (§9.10, §15).
 - **D-13 — Client-first extraction ladder; extension is the flagship.** Cards are built in-DOM by the browser extension first, with `/api/resolve` as a server fallback and a favicon/domain/title floor. Only the client rung works on bot-walled sites (§8.9).
 - **D-14 — Tiered AI, Nano-first on-device.** Tier 1 is on-device Gemini Nano in the extension (default-on where available, zero privacy trade); Tier 2 is opt-in server-side enrichment (Claude API / Ollama, `QP_AI_*`, off by default); Tier 3 is server-side pgvector semantic search. All tiers write `meta.ai` as machine-suggested (§8.9, FR-59).
+- **D-15 — External sinks are a compile-time provider extension.** Outbound-only `type=external` channels (§5.14) share delivery plumbing (encrypted token, SSRF checks, async ledger). Concrete providers are registered in code (NFR-11); the public repo ships the **contract + howto**, not a branded third-party integration. Personal providers stay local (`local/`, unpushed).
 - **A-8 — Cloudflare body-size cap (open).** The simple/resumable threshold assumes a modest edge body limit; confirm the current limit for the account's plan and adjust `QP_SIMPLE_UPLOAD_MB` accordingly.
 - **A-11 — Image-in-clipboard.** Images are handled as files, not native clipboard image data, in v1.
 
