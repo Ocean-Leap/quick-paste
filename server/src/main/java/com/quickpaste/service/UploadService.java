@@ -64,6 +64,7 @@ public class UploadService {
     public UploadSession create(User user, String channelId, long uploadLength,
                                 @Nullable String uploadMetadata) {
         channelService.requireActiveMember(user.id(), channelId);
+        channelService.rejectFilesOnExternal(channelId);
         if (uploadLength <= 0) {
             throw ApiException.validation("Upload-Length must be a positive integer.");
         }

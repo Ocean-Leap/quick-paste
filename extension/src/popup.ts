@@ -58,12 +58,21 @@ async function init(): Promise<void> {
   }
 }
 
+/** Channel metadata from the last me() response — used for text-only sinks. */
+let channelById: Record<string, ChannelDto> = {};
+
 function setupChannels(channels: ChannelDto[], preferId: string): void {
+  channelById = Object.fromEntries(channels.map((c) => [c.id, c]));
   channelSelect.replaceChildren();
   for (const channel of channels) {
     const option = document.createElement('option');
     option.value = channel.id;
-    option.textContent = channel.type === 'shared' ? `${channel.name} · shared` : channel.name;
+    option.textContent =
+      channel.type === 'shared'
+        ? `${channel.name} · shared`
+        : channel.type === 'external'
+          ? `${channel.name} · mind`
+          : channel.name;
     channelSelect.appendChild(option);
   }
   channelId = channels.some((c) => c.id === preferId) ? preferId : channels[0]?.id ?? '';
@@ -71,8 +80,25 @@ function setupChannels(channels: ChannelDto[], preferId: string): void {
   channelSelect.addEventListener('change', () => {
     channelId = channelSelect.value;
     void setSettings({ defaultChannelId: channelId });
+    syncExternalUi();
     void loadHistory();
   });
+  syncExternalUi();
+}
+
+function syncExternalUi(): void {
+  const ch = channelById[channelId];
+  const external = ch?.type === 'external';
+  attachBtn.hidden = Boolean(external);
+  if (external && staged.length) {
+    for (const item of staged) if (item.url) URL.revokeObjectURL(item.url);
+    staged = [];
+    renderAttachments();
+    refreshSendEnabled();
+  }
+  textInput.placeholder = external
+    ? 'Note, quote, or URL → Steward Mind'
+    : 'Paste or type…';
 }
 
 // ---- compose + send ----
@@ -115,6 +141,10 @@ textInput.addEventListener('paste', (e) => {
 });
 
 function stageFile(file: File): void {
+  if (channelById[channelId]?.type === 'external') {
+    showToast('Steward Mind channels are text-only.', 'bad');
+    return;
+  }
   const limit = (config?.simpleUploadMb ?? 20) * 1024 * 1024;
   if (file.size > limit) {
     showToast(`${file.name} is larger than ${config?.simpleUploadMb ?? 20} MB — send it from the app.`, 'bad');

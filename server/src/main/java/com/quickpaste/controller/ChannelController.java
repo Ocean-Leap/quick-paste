@@ -9,6 +9,7 @@ import io.micronaut.http.annotation.Body;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Delete;
 import io.micronaut.http.annotation.Get;
+import io.micronaut.http.annotation.Patch;
 import io.micronaut.http.annotation.Post;
 import io.micronaut.http.annotation.RequestAttribute;
 import io.micronaut.scheduling.TaskExecutors;
@@ -37,7 +38,15 @@ public class ChannelController {
     public HttpResponse<Dtos.ChannelDto> create(
             @RequestAttribute(QpPrincipal.ATTR) QpPrincipal principal,
             @Body Requests.CreateChannelRequest body) {
-        return HttpResponse.created(channelService.create(principal.user(), body.name()));
+        return HttpResponse.created(channelService.create(principal.user(), body));
+    }
+
+    @Patch("/{id}/sink")
+    public Dtos.ChannelDto patchSink(
+            @RequestAttribute(QpPrincipal.ATTR) QpPrincipal principal,
+            String id,
+            @Body Requests.PatchSinkRequest body) {
+        return channelService.patchSink(principal.user(), id, body);
     }
 
     @Delete("/{id}")

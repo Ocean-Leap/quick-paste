@@ -18,7 +18,13 @@ import { disablePush, enablePush, getPushState, pushSupported } from '../lib/pus
 import type { PushState } from '../lib/push';
 import { relativeTime, useNow } from '../lib/relativeTime';
 import { useAppStore } from '../state/store';
+import { ConfirmDialog } from './ConfirmDialog';
 import { CloseIcon } from './icons';
+
+type PendingConfirm =
+  | { kind: 'revoke'; token: TokenDto }
+  | { kind: 'logout-all' }
+  | { kind: 'delete-account'; step: 1 | 2 };
 
 export function AccountSettings({ user, onClose }: { user: UserDto; onClose: () => void }) {
   const { state } = useAppStore();
@@ -48,6 +54,8 @@ export function AccountSettings({ user, onClose }: { user: UserDto; onClose: () 
   const [exportBusy, setExportBusy] = useState(false);
 
   const [accountError, setAccountError] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<PendingConfirm | null>(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
 
   useEffect(() => {
     closeRef.current?.focus();
@@ -55,11 +63,16 @@ export function AccountSettings({ user, onClose }: { user: UserDto; onClose: () 
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key !== 'Escape') return;
+      if (confirm) {
+        if (!confirmBusy) setConfirm(null);
+        return;
+      }
+      onClose();
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+  }, [onClose, confirm, confirmBusy]);
 
   const refreshTokens = useCallback(async () => {
     try {
@@ -152,15 +165,8 @@ export function AccountSettings({ user, onClose }: { user: UserDto; onClose: () 
     }
   };
 
-  const handleRevoke = async (token: TokenDto) => {
-    if (!window.confirm(`Revoke token "${token.name}"?`)) return;
-    setTokenError(null);
-    try {
-      await revokeToken(token.id);
-      await refreshTokens();
-    } catch (err) {
-      setTokenError(errorMessage(err));
-    }
+  const handleRevoke = (token: TokenDto) => {
+    setConfirm({ kind: 'revoke', token });
   };
 
   const handleExport = async () => {
@@ -175,27 +181,40 @@ export function AccountSettings({ user, onClose }: { user: UserDto; onClose: () 
     }
   };
 
-  const handleLogoutAll = async () => {
-    if (!window.confirm('Sign out on every device?')) return;
-    setAccountError(null);
-    try {
-      await logoutAll();
-      location.href = '/';
-    } catch (err) {
-      setAccountError(errorMessage(err));
-    }
+  const handleLogoutAll = () => {
+    setConfirm({ kind: 'logout-all' });
   };
 
-  const handleDeleteAccount = async () => {
-    if (!window.confirm('Delete your account? All channels you own, clips and files will be removed.'))
-      return;
-    if (!window.confirm('This is permanent. Really delete your account?')) return;
-    setAccountError(null);
+  const handleDeleteAccount = () => {
+    setConfirm({ kind: 'delete-account', step: 1 });
+  };
+
+  const runConfirmed = async () => {
+    if (!confirm || confirmBusy) return;
+    setConfirmBusy(true);
     try {
-      await deleteAccount();
-      location.reload();
+      if (confirm.kind === 'revoke') {
+        setTokenError(null);
+        await revokeToken(confirm.token.id);
+        await refreshTokens();
+        setConfirm(null);
+      } else if (confirm.kind === 'logout-all') {
+        setAccountError(null);
+        await logoutAll();
+        location.href = '/';
+      } else if (confirm.step === 1) {
+        setConfirm({ kind: 'delete-account', step: 2 });
+      } else {
+        setAccountError(null);
+        await deleteAccount();
+        location.reload();
+      }
     } catch (err) {
-      setAccountError(errorMessage(err));
+      if (confirm.kind === 'revoke') setTokenError(errorMessage(err));
+      else setAccountError(errorMessage(err));
+      setConfirm(null);
+    } finally {
+      setConfirmBusy(false);
     }
   };
 
@@ -336,7 +355,7 @@ export function AccountSettings({ user, onClose }: { user: UserDto; onClose: () 
                     <button
                       type="button"
                       className="btn danger-ghost small"
-                      onClick={() => void handleRevoke(token)}
+                      onClick={() => handleRevoke(token)}
                     >
                       Revoke
                     </button>
@@ -391,7 +410,7 @@ export function AccountSettings({ user, onClose }: { user: UserDto; onClose: () 
               ))}
           </div>
           <div className="form-row">
-            <button type="button" className="btn" onClick={() => void handleLogoutAll()}>
+            <button type="button" className="btn" onClick={handleLogoutAll}>
               Sign out everywhere
             </button>
           </div>
@@ -400,11 +419,48 @@ export function AccountSettings({ user, onClose }: { user: UserDto; onClose: () 
         <section aria-label="Danger zone">
           <h3>Danger zone</h3>
           {accountError && <p className="error">{accountError}</p>}
-          <button type="button" className="btn danger" onClick={() => void handleDeleteAccount()}>
+          <button type="button" className="btn danger" onClick={handleDeleteAccount}>
             Delete account
           </button>
         </section>
       </div>
+
+      <ConfirmDialog
+        open={confirm !== null}
+        title={
+          confirm?.kind === 'revoke'
+            ? 'Revoke token'
+            : confirm?.kind === 'logout-all'
+              ? 'Sign out everywhere'
+              : confirm?.step === 2
+                ? 'Really delete?'
+                : 'Delete account'
+        }
+        message={
+          confirm?.kind === 'revoke'
+            ? `Revoke token "${confirm.token.name}"? Shortcuts and helpers using it will stop working.`
+            : confirm?.kind === 'logout-all'
+              ? 'Sign out on every device? You will need to sign in again on each one.'
+              : confirm?.step === 2
+                ? 'This is permanent. Really delete your account?'
+                : 'Delete your account? All channels you own, clips, and files will be removed.'
+        }
+        confirmLabel={
+          confirm?.kind === 'revoke'
+            ? 'Revoke'
+            : confirm?.kind === 'logout-all'
+              ? 'Sign out everywhere'
+              : confirm?.step === 2
+                ? 'Delete forever'
+                : 'Continue'
+        }
+        danger={confirm?.kind !== 'logout-all'}
+        busy={confirmBusy}
+        onCancel={() => {
+          if (!confirmBusy) setConfirm(null);
+        }}
+        onConfirm={() => void runConfirmed()}
+      />
     </div>
   );
 }

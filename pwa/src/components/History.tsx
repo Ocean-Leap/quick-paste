@@ -6,6 +6,7 @@ import { formatBytes } from '../lib/format';
 import { expiresLabel, lifeFraction, relativeTime, useNow } from '../lib/relativeTime';
 import { loadOlder } from '../state/actions';
 import { useAppStore } from '../state/store';
+import { ConfirmDialog } from './ConfirmDialog';
 import { FileThumbnail } from './FileThumbnail';
 import { CheckIcon, CopyIcon, DownloadIcon, FileIcon, TextIcon, TrashIcon } from './icons';
 import { Lifeline } from './Lifeline';
@@ -24,6 +25,8 @@ export function History({ channel }: { channel: ChannelDto }) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [expiryShownId, setExpiryShownId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [clearOpen, setClearOpen] = useState(false);
+  const [clearBusy, setClearBusy] = useState(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const loadMoreRef = useRef<() => void>(() => undefined);
 
@@ -101,13 +104,18 @@ export function History({ channel }: { channel: ChannelDto }) {
   };
 
   const handleClear = async () => {
-    if (!window.confirm(`Clear all items in "${channel.name}"? This cannot be undone.`)) return;
+    if (clearBusy) return;
+    setClearBusy(true);
     setError(null);
     try {
       await clearClips(channel.id);
       dispatch({ type: 'channel-cleared', channelId: channel.id });
+      setClearOpen(false);
     } catch (err) {
       setError(errorMessage(err));
+      setClearOpen(false);
+    } finally {
+      setClearBusy(false);
     }
   };
 
@@ -147,6 +155,16 @@ export function History({ channel }: { channel: ChannelDto }) {
       <div className="latest-eyebrow">
         <span>Latest · {clip.origin} ·</span>
         {timeSwap(clip)}
+        {clip.delivery && (
+          <span className={`delivery delivery-${clip.delivery.status}`}>
+            {' · '}
+            {clip.delivery.status === 'sent' || clip.delivery.status === 'deduped'
+              ? `mind · ${clip.delivery.kind ?? 'item'}`
+              : clip.delivery.status === 'pending'
+                ? 'sending to mind…'
+                : `mind failed${clip.delivery.error ? `: ${clip.delivery.error}` : ''}`}
+          </span>
+        )}
       </div>
       {clip.type === 'text' ? (
         <pre className="latest-text">{clip.text ?? ''}</pre>
@@ -222,6 +240,18 @@ export function History({ channel }: { channel: ChannelDto }) {
         )}
         <p className="clip-meta">
           {clip.origin} · {timeSwap(clip)}
+          {clip.delivery && (
+            <>
+              {' · '}
+              <span className={`delivery delivery-${clip.delivery.status}`}>
+                {clip.delivery.status === 'sent' || clip.delivery.status === 'deduped'
+                  ? `mind · ${clip.delivery.kind ?? 'item'}`
+                  : clip.delivery.status === 'pending'
+                    ? 'sending to mind…'
+                    : `mind failed${clip.delivery.error ? `: ${clip.delivery.error}` : ''}`}
+              </span>
+            </>
+          )}
         </p>
       </div>
       <div className="clip-actions">
@@ -254,9 +284,9 @@ export function History({ channel }: { channel: ChannelDto }) {
   return (
     <section className="stream card" aria-label="Stream">
       <header className="stream-toolbar">
-        <span className="stream-eyebrow">Stream</span>
+        <span className="stream-eyebrow">{channel.type === 'external' ? 'Mind sink' : 'Stream'}</span>
         {clips.length > 0 && (
-          <button type="button" className="btn danger-ghost small" onClick={() => void handleClear()}>
+          <button type="button" className="btn danger-ghost small" onClick={() => setClearOpen(true)}>
             Clear channel
           </button>
         )}
@@ -289,6 +319,18 @@ export function History({ channel }: { channel: ChannelDto }) {
       )}
       <div ref={sentinelRef} className="history-sentinel" aria-hidden="true" />
       {ch?.loadingOlder && <p className="muted">Loading older items…</p>}
+      <ConfirmDialog
+        open={clearOpen}
+        title="Clear channel"
+        message={`Clear all items in "${channel.name}"? This cannot be undone.`}
+        confirmLabel="Clear"
+        danger
+        busy={clearBusy}
+        onCancel={() => {
+          if (!clearBusy) setClearOpen(false);
+        }}
+        onConfirm={() => void handleClear()}
+      />
     </section>
   );
 }

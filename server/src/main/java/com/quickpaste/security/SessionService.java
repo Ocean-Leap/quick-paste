@@ -38,11 +38,24 @@ public class SessionService {
         this.users = users;
         if (config.getSessionSecret() == null || config.getSessionSecret().isBlank()) {
             LOG.warn("QP_SESSION_SECRET is not set; using a random per-boot secret. "
-                    + "Sessions will not survive a restart.");
+                    + "Sessions and sink-token encryption will not survive a restart.");
             this.secret = CryptoUtil.randomUrlToken(32);
         } else {
             this.secret = config.getSessionSecret();
         }
+    }
+
+    /**
+     * Runtime secret used for session HMACs and sink-token AES key derivation.
+     * Always non-blank (falls back to a per-boot random value when the env var is unset).
+     */
+    public String materialSecret() {
+        return secret;
+    }
+
+    /** AES-256 key derived from {@link #materialSecret()} for encrypting channel sink tokens. */
+    public byte[] aesKey() {
+        return CryptoUtil.aesKeyFromSecret(secret);
     }
 
     public record NewSession(String cookieValue, String csrfToken, AuthSession session) {

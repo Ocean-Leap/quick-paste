@@ -15,4 +15,5 @@ public record Channel(
 
     public static final String TYPE_PRIVATE = "private";
     public static final String TYPE_SHARED = "shared";
+    public static final String TYPE_EXTERNAL = "external";
 }

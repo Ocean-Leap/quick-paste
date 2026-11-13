@@ -3,6 +3,8 @@ package com.quickpaste.model.dto;
 import io.micronaut.core.annotation.Nullable;
 import io.micronaut.serde.annotation.Serdeable;
 
+import java.util.List;
+
 /** Request bodies (SPEC §8.2). Validation happens in the services. */
 public final class Requests {
 
@@ -15,11 +17,25 @@ public final class Requests {
             @Nullable String text,
             @Nullable String fileId,
             @Nullable String origin,
-            @Nullable String idempotencyKey) {
+            @Nullable String idempotencyKey,
+            @Nullable String mindKind) {
     }
 
     @Serdeable
-    public record CreateChannelRequest(@Nullable String name) {
+    public record CreateChannelRequest(
+            @Nullable String name,
+            @Nullable String type,
+            @Nullable String provider,
+            @Nullable String baseUrl,
+            @Nullable String token,
+            @Nullable List<String> defaultTags) {
+    }
+
+    @Serdeable
+    public record PatchSinkRequest(
+            @Nullable String token,
+            @Nullable String baseUrl,
+            @Nullable List<String> defaultTags) {
     }
 
     @Serdeable

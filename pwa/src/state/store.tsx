@@ -56,8 +56,11 @@ const EMPTY_CHANNEL: ChannelClipsState = {
 };
 
 function sortChannels(channels: ChannelDto[]): ChannelDto[] {
+  const rank = (type: ChannelDto['type']) =>
+    type === 'private' ? 0 : type === 'external' ? 1 : 2;
   return [...channels].sort((a, b) => {
-    if (a.type !== b.type) return a.type === 'private' ? -1 : 1;
+    const r = rank(a.type) - rank(b.type);
+    if (r !== 0) return r;
     return a.name.localeCompare(b.name);
   });
 }

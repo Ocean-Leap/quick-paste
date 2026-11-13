@@ -68,7 +68,7 @@ export function Shell() {
   }, [dispatch]);
 
   const selected = state.channels.find((c) => c.id === state.selectedId) ?? null;
-  const selectedIsShared = selected?.type === 'shared';
+  const selectedHasDetail = selected?.type === 'shared' || selected?.type === 'external';
 
   // Toasts are moments — dismiss after 2s.
   useEffect(() => {
@@ -130,8 +130,8 @@ export function Shell() {
 
   // Close the members panel when the selection is no longer a shared channel.
   useEffect(() => {
-    if (!selectedIsShared) setDetailOpen(false);
-  }, [selectedIsShared, state.selectedId]);
+    if (!selectedHasDetail) setDetailOpen(false);
+  }, [selectedHasDetail, state.selectedId]);
 
   const handleEvent = useCallback(
     (event: StreamEvent) => {
@@ -219,7 +219,7 @@ export function Shell() {
         connection={state.connection}
         onSelect={(channelId) => dispatch({ type: 'select-channel', channelId })}
         onChannelCreated={handleChannelCreated}
-        onToggleChannelDetail={selectedIsShared ? () => setDetailOpen((v) => !v) : null}
+        onToggleChannelDetail={selectedHasDetail ? () => setDetailOpen((v) => !v) : null}
         onOpenSettings={() => setSettingsOpen(true)}
       />
       {offlineLong && (
@@ -236,7 +236,7 @@ export function Shell() {
             onShareConsumed={() => setPendingShare(null)}
             onToast={setToast}
           />
-          {detailOpen && selectedIsShared && (
+          {detailOpen && selectedHasDetail && (
             <ChannelDetail channel={selected} onClose={() => setDetailOpen(false)} />
           )}
           <History channel={selected} />

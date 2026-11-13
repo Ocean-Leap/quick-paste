@@ -11,9 +11,15 @@ export interface UserDto {
 export interface ChannelDto {
   id: string;
   name: string;
-  type: 'private' | 'shared';
+  type: 'private' | 'shared' | 'external';
   createdBy: string;
   role: 'owner' | 'member';
+  sink?: {
+    provider: string;
+    baseUrl: string;
+    tokenPrefix: string;
+    defaultTags: string[] | null;
+  } | null;
 }
 
 export interface FileRefDto {
@@ -33,6 +39,13 @@ export interface ClipDto {
   originUserId: string;
   createdAt: string;
   expiresAt: string;
+  delivery?: {
+    status: string;
+    kind: string | null;
+    externalItemId: string | null;
+    attempts: number;
+    error: string | null;
+  } | null;
 }
 
 export interface ClipListResponse {

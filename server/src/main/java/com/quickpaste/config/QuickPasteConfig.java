@@ -40,6 +40,8 @@ public class QuickPasteConfig {
     private int exportTtlHours = 24;
     private boolean thumbnailsEnabled = true;
     private int thumbnailMaxPx = 320;
+    private int sinkDeliveryIntervalSec = 15;
+    private int sinkMaxAttempts = 8;
     private String vapidPublicKey = "";
     private String vapidPrivateKey = "";
     private String vapidSubject = "";
@@ -119,6 +121,10 @@ public class QuickPasteConfig {
     public void setThumbnailsEnabled(boolean v) { this.thumbnailsEnabled = v; }
     public int getThumbnailMaxPx() { return thumbnailMaxPx; }
     public void setThumbnailMaxPx(int v) { this.thumbnailMaxPx = v; }
+    public int getSinkDeliveryIntervalSec() { return sinkDeliveryIntervalSec; }
+    public void setSinkDeliveryIntervalSec(int v) { this.sinkDeliveryIntervalSec = v; }
+    public int getSinkMaxAttempts() { return sinkMaxAttempts; }
+    public void setSinkMaxAttempts(int v) { this.sinkMaxAttempts = v; }
     public String getVapidPublicKey() { return vapidPublicKey; }
     public void setVapidPublicKey(String v) { this.vapidPublicKey = v; }
     public String getVapidPrivateKey() { return vapidPrivateKey; }

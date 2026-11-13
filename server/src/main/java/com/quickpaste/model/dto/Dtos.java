@@ -26,10 +26,37 @@ public final class Dtos {
     }
 
     @Serdeable
-    public record ChannelDto(String id, String name, String type, String createdBy, String role) {
+    public record ChannelDto(
+            String id,
+            String name,
+            String type,
+            String createdBy,
+            String role,
+            @Nullable SinkDto sink) {
         public static ChannelDto from(Channel c, String role) {
-            return new ChannelDto(c.id(), c.name(), c.type(), c.createdBy(), role);
+            return new ChannelDto(c.id(), c.name(), c.type(), c.createdBy(), role, null);
         }
+
+        public static ChannelDto from(Channel c, String role, @Nullable SinkDto sink) {
+            return new ChannelDto(c.id(), c.name(), c.type(), c.createdBy(), role, sink);
+        }
+    }
+
+    @Serdeable
+    public record SinkDto(
+            String provider,
+            String baseUrl,
+            String tokenPrefix,
+            @Nullable List<String> defaultTags) {
+    }
+
+    @Serdeable
+    public record DeliveryDto(
+            String status,
+            @Nullable String kind,
+            @Nullable String externalItemId,
+            int attempts,
+            @Nullable String error) {
     }
 
     @Serdeable
@@ -59,8 +86,13 @@ public final class Dtos {
             String origin,
             String originUserId,
             String createdAt,
-            String expiresAt) {
+            String expiresAt,
+            @Nullable DeliveryDto delivery) {
         public static ClipDto from(Clip c, @Nullable StoredFile file) {
+            return from(c, file, null);
+        }
+
+        public static ClipDto from(Clip c, @Nullable StoredFile file, @Nullable DeliveryDto delivery) {
             return new ClipDto(
                     c.id(),
                     c.channelId(),
@@ -70,7 +102,8 @@ public final class Dtos {
                     c.originDevice(),
                     c.originUserId(),
                     Iso.format(c.createdAt()),
-                    Iso.format(c.expiresAt()));
+                    Iso.format(c.expiresAt()),
+                    delivery);
         }
     }
 

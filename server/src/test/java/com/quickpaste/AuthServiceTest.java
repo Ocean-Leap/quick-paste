@@ -58,7 +58,8 @@ class AuthServiceTest extends DbTestBase {
     @Order(3)
     void pendingInviteActivatesOnFirstLogin() {
         TestData.Fixture admin = testData.user("authsvc-admin@test.local", true);
-        Dtos.ChannelDto team = channelService.create(admin.user(), "invite-team");
+        Dtos.ChannelDto team = channelService.create(admin.user(),
+                new com.quickpaste.model.dto.Requests.CreateChannelRequest("invite-team", null, null, null, null, null));
         Dtos.MemberDto pending = channelService.invite(admin.user(), team.id(), "newcomer@test.local");
         assertEquals("pending", pending.status());
 

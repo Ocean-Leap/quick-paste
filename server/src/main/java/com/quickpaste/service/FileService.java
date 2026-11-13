@@ -2,10 +2,12 @@ package com.quickpaste.service;
 
 import com.quickpaste.config.QuickPasteConfig;
 import com.quickpaste.error.ApiException;
+import com.quickpaste.model.Channel;
 import com.quickpaste.model.StoredFile;
 import com.quickpaste.model.User;
 import com.quickpaste.model.dto.Dtos;
 import com.quickpaste.repository.ChannelMemberRepository;
+import com.quickpaste.repository.ChannelRepository;
 import com.quickpaste.repository.StoredFileRepository;
 import com.quickpaste.model.ChannelMember;
 import com.quickpaste.util.Hashing;
@@ -42,18 +44,21 @@ public class FileService {
     private final QuickPasteConfig config;
     private final StoredFileRepository files;
     private final ChannelMemberRepository members;
+    private final ChannelRepository channels;
     private final UserLocks userLocks;
 
     public FileService(QuickPasteConfig config, StoredFileRepository files, ChannelMemberRepository members,
-                       UserLocks userLocks) {
+                       ChannelRepository channels, UserLocks userLocks) {
         this.config = config;
         this.files = files;
         this.members = members;
+        this.channels = channels;
         this.userLocks = userLocks;
     }
 
     public Dtos.FileUploadedDto upload(User user, String channelId, CompletedFileUpload upload) {
         requireActiveMember(user.id(), channelId);
+        rejectExternal(channelId);
 
         long declaredSize = upload.getSize();
         long maxFileBytes = config.getMaxFileMb() * 1024L * 1024L;
@@ -211,6 +216,13 @@ public class FileService {
         return files.findByIdAndChannelId(fileId, channelId)
                 .filter(f -> f.expiresAt().isAfter(Instant.now()))
                 .orElseThrow(ApiException::notFound);
+    }
+
+    private void rejectExternal(String channelId) {
+        if (channels.findById(channelId).map(c -> Channel.TYPE_EXTERNAL.equals(c.type())).orElse(false)) {
+            throw ApiException.validation(
+                    "External sink channels accept text only (Steward Mind note/quote/link).");
+        }
     }
 
     private void requireActiveMember(String userId, String channelId) {

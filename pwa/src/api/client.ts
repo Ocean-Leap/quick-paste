@@ -6,9 +6,11 @@ import type {
   ClipDto,
   ClipListResponse,
   CreateClipRequest,
+  CreateExternalChannelRequest,
   ExportJobDto,
   MeResponse,
   MemberDto,
+  PatchSinkRequest,
   PushSubscriptionCreateRequest,
   PushSubscriptionCreatedDto,
   TokenCreatedDto,
@@ -142,6 +144,14 @@ export function deletePushSubscription(subscriptionId: string): Promise<void> {
 
 export function createChannel(name: string): Promise<ChannelDto> {
   return json<ChannelDto>('POST', '/api/channels', { name });
+}
+
+export function createExternalChannel(request: CreateExternalChannelRequest): Promise<ChannelDto> {
+  return json<ChannelDto>('POST', '/api/channels', request);
+}
+
+export function patchChannelSink(channelId: string, request: PatchSinkRequest): Promise<ChannelDto> {
+  return json<ChannelDto>('PATCH', `/api/channels/${encodeURIComponent(channelId)}/sink`, request);
 }
 
 export function deleteChannel(channelId: string): Promise<void> {

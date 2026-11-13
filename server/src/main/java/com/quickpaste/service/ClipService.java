@@ -19,8 +19,13 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
+import com.quickpaste.model.ClipDelivery;
 
 /** Clip lifecycle (SPEC §5.3, §5.6, §5.7): create with dedup + idempotency, list, delete, clear. */
 @Singleton
@@ -34,10 +39,12 @@ public class ClipService {
     private final IdempotencyCache idempotency;
     private final WsRegistry ws;
     private final PushNotifier pushNotifier;
+    private final SinkDeliveryService sinkDelivery;
 
     public ClipService(QuickPasteConfig config, ClipRepository clips, StoredFileRepository files,
                        ChannelService channelService, FileService fileService,
-                       IdempotencyCache idempotency, WsRegistry ws, PushNotifier pushNotifier) {
+                       IdempotencyCache idempotency, WsRegistry ws, PushNotifier pushNotifier,
+                       SinkDeliveryService sinkDelivery) {
         this.config = config;
         this.clips = clips;
         this.files = files;
@@ -46,6 +53,7 @@ public class ClipService {
         this.idempotency = idempotency;
         this.ws = ws;
         this.pushNotifier = pushNotifier;
+        this.sinkDelivery = sinkDelivery;
     }
 
     /** {@code created} distinguishes a fresh clip (201) from a dedup no-op (200, FR-18). */
@@ -96,6 +104,7 @@ public class ClipService {
             contentHash = Hashing.sha256Hex(text);
             expiresAt = now.plus(Duration.ofHours(config.getClipTtlHours()));
         } else if (Clip.TYPE_FILE.equals(type)) {
+            channelService.rejectFilesOnExternal(channelId);
             if (request.fileId() == null || request.fileId().isBlank()) {
                 throw ApiException.validation("fileId is required for type=file.");
             }
@@ -124,7 +133,10 @@ public class ClipService {
         Clip clip = new Clip(Ids.newUlid(), channelId, user.id(), origin, type, text,
                 file == null ? null : file.id(), contentHash, false, null, null, now, expiresAt);
         clips.save(clip);
-        Dtos.ClipDto dto = Dtos.ClipDto.from(clip, file);
+        if (Clip.TYPE_TEXT.equals(type) && channelService.isExternal(channelId)) {
+            sinkDelivery.enqueue(clip, request.mindKind());
+        }
+        Dtos.ClipDto dto = toDto(clip);
         ws.clipCreated(dto);
         pushNotifier.clipCreated(dto);
         if (cacheKey != null) {
@@ -150,9 +162,10 @@ public class ClipService {
         List<Clip> rows = afterId != null && !afterId.isBlank()
                 ? clips.listAfter(channelId, now, afterId, type, effectiveLimit)
                 : clips.listBefore(channelId, now, blankToNull(beforeId), type, effectiveLimit);
+        Map<String, ClipDelivery> deliveryByClip = deliveryMap(rows);
         List<Dtos.ClipDto> items = new ArrayList<>(rows.size());
         for (Clip row : rows) {
-            items.add(toDto(row));
+            items.add(toDto(row, deliveryByClip.get(row.id())));
         }
         String nextCursor = rows.size() == effectiveLimit ? rows.get(rows.size() - 1).id() : null;
         return new Dtos.ClipListResponse(items, nextCursor);
@@ -179,8 +192,27 @@ public class ClipService {
     }
 
     public Dtos.ClipDto toDto(Clip clip) {
+        return toDto(clip, sinkDelivery.find(clip.id()).orElse(null));
+    }
+
+    private Dtos.ClipDto toDto(Clip clip, @Nullable ClipDelivery deliveryRow) {
         StoredFile file = clip.fileId() == null ? null : files.findById(clip.fileId()).orElse(null);
-        return Dtos.ClipDto.from(clip, file);
+        Dtos.DeliveryDto delivery = deliveryRow == null ? null : new Dtos.DeliveryDto(
+                deliveryRow.status(),
+                deliveryRow.kind(),
+                deliveryRow.externalItemId(),
+                deliveryRow.attempts(),
+                deliveryRow.lastError());
+        return Dtos.ClipDto.from(clip, file, delivery);
+    }
+
+    private Map<String, ClipDelivery> deliveryMap(List<Clip> rows) {
+        if (rows.isEmpty()) {
+            return Map.of();
+        }
+        List<String> ids = rows.stream().map(Clip::id).toList();
+        return sinkDelivery.findForClips(ids).stream()
+                .collect(Collectors.toMap(ClipDelivery::clipId, d -> d, (a, b) -> a, HashMap::new));
     }
 
     @Nullable

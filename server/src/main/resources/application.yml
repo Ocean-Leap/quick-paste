@@ -74,6 +74,8 @@ quickpaste:
   export-ttl-hours: ${QP_EXPORT_TTL_HOURS:24}
   thumbnails-enabled: ${QP_THUMBNAILS_ENABLED:true}
   thumbnail-max-px: ${QP_THUMBNAIL_MAX_PX:320}
+  sink-delivery-interval-sec: ${QP_SINK_DELIVERY_INTERVAL_SEC:15}
+  sink-max-attempts: ${QP_SINK_MAX_ATTEMPTS:8}
   vapid-public-key: ${QP_VAPID_PUBLIC_KEY:}
   vapid-private-key: ${QP_VAPID_PRIVATE_KEY:}
   vapid-subject: ${QP_VAPID_SUBJECT:}

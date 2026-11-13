@@ -1,9 +1,22 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { deleteChannel, errorMessage, inviteMember, listMembers, removeMember } from '../api/client';
+import {
+  deleteChannel,
+  errorMessage,
+  inviteMember,
+  listMembers,
+  patchChannelSink,
+  removeMember,
+} from '../api/client';
 import type { ChannelDto, MemberDto } from '../api/types';
 import { useAppStore } from '../state/store';
+import { ConfirmDialog } from './ConfirmDialog';
 import { CloseIcon } from './icons';
+
+type PendingConfirm =
+  | { kind: 'remove'; member: MemberDto }
+  | { kind: 'leave' }
+  | { kind: 'delete' };
 
 export function ChannelDetail({ channel, onClose }: { channel: ChannelDto; onClose: () => void }) {
   const { state, dispatch } = useAppStore();
@@ -11,8 +24,20 @@ export function ChannelDetail({ channel, onClose }: { channel: ChannelDto; onClo
   const [error, setError] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState('');
   const [busy, setBusy] = useState(false);
+  const [token, setToken] = useState('');
+  const [baseUrl, setBaseUrl] = useState(channel.sink?.baseUrl ?? '');
+  const [confirm, setConfirm] = useState<PendingConfirm | null>(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
+
+  const isExternal = channel.type === 'external';
+  const isShared = channel.type === 'shared';
 
   useEffect(() => {
+    if (isExternal) {
+      setMembers([]);
+      setBaseUrl(channel.sink?.baseUrl ?? '');
+      return;
+    }
     let cancelled = false;
     setMembers(null);
     setError(null);
@@ -26,7 +51,7 @@ export function ChannelDetail({ channel, onClose }: { channel: ChannelDto; onClo
     return () => {
       cancelled = true;
     };
-  }, [channel.id]);
+  }, [channel.id, channel.sink?.baseUrl, isExternal]);
 
   const isOwner = channel.role === 'owner';
   const selfMember = members?.find((m) => m.userId === state.user.id) ?? null;
@@ -48,42 +73,87 @@ export function ChannelDetail({ channel, onClose }: { channel: ChannelDto; onClo
     }
   };
 
-  const handleRemove = async (member: MemberDto) => {
-    const label = member.status === 'pending' ? 'Cancel the invite for' : 'Remove';
-    if (!window.confirm(`${label} ${member.email}?`)) return;
+  const runConfirmed = async () => {
+    if (!confirm || confirmBusy) return;
+    setConfirmBusy(true);
     setError(null);
     try {
-      await removeMember(channel.id, member.id);
-      setMembers((prev) => (prev ? prev.filter((m) => m.id !== member.id) : prev));
+      if (confirm.kind === 'remove') {
+        await removeMember(channel.id, confirm.member.id);
+        setMembers((prev) => (prev ? prev.filter((m) => m.id !== confirm.member.id) : prev));
+      } else if (confirm.kind === 'leave') {
+        if (!selfMember) return;
+        await removeMember(channel.id, selfMember.id);
+        dispatch({ type: 'channel-removed', channelId: channel.id });
+        setConfirm(null);
+        onClose();
+        return;
+      } else {
+        await deleteChannel(channel.id);
+        dispatch({ type: 'channel-removed', channelId: channel.id });
+        setConfirm(null);
+        onClose();
+        return;
+      }
+      setConfirm(null);
     } catch (err) {
       setError(errorMessage(err));
+      setConfirm(null);
+    } finally {
+      setConfirmBusy(false);
     }
   };
 
-  const handleLeave = async () => {
-    if (!selfMember) return;
-    if (!window.confirm(`Leave "${channel.name}"?`)) return;
+  const handleRotateSink = async (event: FormEvent) => {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true);
     setError(null);
     try {
-      await removeMember(channel.id, selfMember.id);
-      dispatch({ type: 'channel-removed', channelId: channel.id });
-      onClose();
+      const updated = await patchChannelSink(channel.id, {
+        token: token.trim() || undefined,
+        baseUrl: baseUrl.trim() || undefined,
+      });
+      dispatch({
+        type: 'channels-resynced',
+        channels: state.channels.map((c) => (c.id === updated.id ? updated : c)),
+      });
+      setToken('');
     } catch (err) {
       setError(errorMessage(err));
+    } finally {
+      setBusy(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm(`Delete "${channel.name}" for everyone? All items will be removed.`)) return;
-    setError(null);
-    try {
-      await deleteChannel(channel.id);
-      dispatch({ type: 'channel-removed', channelId: channel.id });
-      onClose();
-    } catch (err) {
-      setError(errorMessage(err));
+  const confirmProps = (() => {
+    if (!confirm) return null;
+    if (confirm.kind === 'remove') {
+      const label = confirm.member.status === 'pending' ? 'Cancel invite' : 'Remove member';
+      return {
+        title: label,
+        message:
+          confirm.member.status === 'pending'
+            ? `Cancel the invite for ${confirm.member.email}?`
+            : `Remove ${confirm.member.email} from this channel?`,
+        confirmLabel: label,
+      };
     }
-  };
+    if (confirm.kind === 'leave') {
+      return {
+        title: 'Leave channel',
+        message: `Leave "${channel.name}"?`,
+        confirmLabel: 'Leave',
+      };
+    }
+    return {
+      title: 'Delete channel',
+      message: isExternal
+        ? `Delete "${channel.name}"? Local history will be removed; Steward items stay in Mind.`
+        : `Delete "${channel.name}" for everyone? All items will be removed.`,
+      confirmLabel: 'Delete',
+    };
+  })();
 
   return (
     <section className="channel-detail card" aria-label={`Channel ${channel.name}`}>
@@ -94,32 +164,69 @@ export function ChannelDetail({ channel, onClose }: { channel: ChannelDto; onClo
         </button>
       </header>
       {error && <p className="error">{error}</p>}
-      {members === null ? (
-        <p className="muted">Loading members…</p>
-      ) : (
-        <ul className="member-list">
-          {members.map((member) => (
-            <li key={member.id} className="member-row">
-              <div className="member-info">
-                <span>{member.displayName || member.email}</span>
-                <span className="muted">{member.email}</span>
-              </div>
-              <span className="badge">{member.role}</span>
-              {member.status === 'pending' && <span className="badge pending">pending</span>}
-              {isOwner && member.userId !== state.user.id && (
-                <button
-                  type="button"
-                  className="btn danger-ghost small"
-                  onClick={() => void handleRemove(member)}
-                >
-                  Remove
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
+
+      {isExternal && channel.sink && (
+        <div className="sink-panel">
+          <p className="muted">
+            Outbound Steward Mind sink · token {channel.sink.tokenPrefix}…
+            {channel.sink.defaultTags?.length
+              ? ` · tags ${channel.sink.defaultTags.join(', ')}`
+              : ''}
+          </p>
+          <form className="invite-form sink-form" onSubmit={(e) => void handleRotateSink(e)}>
+            <input
+              type="url"
+              value={baseUrl}
+              placeholder="https://steward.example"
+              aria-label="Steward base URL"
+              onChange={(e) => setBaseUrl(e.target.value)}
+            />
+            <input
+              type="password"
+              value={token}
+              placeholder="New stw_ token (optional)"
+              aria-label="Rotate Steward token"
+              autoComplete="off"
+              onChange={(e) => setToken(e.target.value)}
+            />
+            <button
+              type="submit"
+              className="btn"
+              disabled={busy || (!token.trim() && baseUrl.trim() === (channel.sink?.baseUrl ?? ''))}
+            >
+              {busy ? 'Saving…' : 'Update sink'}
+            </button>
+          </form>
+        </div>
       )}
-      {isOwner && (
+
+      {isShared &&
+        (members === null ? (
+          <p className="muted">Loading members…</p>
+        ) : (
+          <ul className="member-list">
+            {members.map((member) => (
+              <li key={member.id} className="member-row">
+                <div className="member-info">
+                  <span>{member.displayName || member.email}</span>
+                  <span className="muted">{member.email}</span>
+                </div>
+                <span className="badge">{member.role}</span>
+                {member.status === 'pending' && <span className="badge pending">pending</span>}
+                {isOwner && member.userId !== state.user.id && (
+                  <button
+                    type="button"
+                    className="btn danger-ghost small"
+                    onClick={() => setConfirm({ kind: 'remove', member })}
+                  >
+                    Remove
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        ))}
+      {isShared && isOwner && (
         <form className="invite-form" onSubmit={(event) => void handleInvite(event)}>
           <input
             type="email"
@@ -136,7 +243,7 @@ export function ChannelDetail({ channel, onClose }: { channel: ChannelDto; onClo
       )}
       <div className="panel-footer">
         {isOwner ? (
-          <button type="button" className="btn danger" onClick={() => void handleDelete()}>
+          <button type="button" className="btn danger" onClick={() => setConfirm({ kind: 'delete' })}>
             Delete channel
           </button>
         ) : (
@@ -144,12 +251,27 @@ export function ChannelDetail({ channel, onClose }: { channel: ChannelDto; onClo
             type="button"
             className="btn danger-ghost"
             disabled={!selfMember}
-            onClick={() => void handleLeave()}
+            onClick={() => setConfirm({ kind: 'leave' })}
           >
             Leave channel
           </button>
         )}
       </div>
+
+      {confirmProps && (
+        <ConfirmDialog
+          open
+          title={confirmProps.title}
+          message={confirmProps.message}
+          confirmLabel={confirmProps.confirmLabel}
+          danger
+          busy={confirmBusy}
+          onCancel={() => {
+            if (!confirmBusy) setConfirm(null);
+          }}
+          onConfirm={() => void runConfirmed()}
+        />
+      )}
     </section>
   );
 }

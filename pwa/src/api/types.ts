@@ -8,12 +8,28 @@ export interface UserDto {
   isAdmin: boolean;
 }
 
+export interface SinkDto {
+  provider: 'steward';
+  baseUrl: string;
+  tokenPrefix: string;
+  defaultTags: string[] | null;
+}
+
+export interface DeliveryDto {
+  status: 'pending' | 'sent' | 'deduped' | 'failed';
+  kind: 'note' | 'quote' | 'link' | null;
+  externalItemId: string | null;
+  attempts: number;
+  error: string | null;
+}
+
 export interface ChannelDto {
   id: string;
   name: string;
-  type: 'private' | 'shared';
+  type: 'private' | 'shared' | 'external';
   createdBy: string;
   role: 'owner' | 'member';
+  sink?: SinkDto | null;
 }
 
 export interface MemberDto {
@@ -42,6 +58,7 @@ export interface ClipDto {
   originUserId: string;
   createdAt: string;
   expiresAt: string;
+  delivery?: DeliveryDto | null;
 }
 
 export interface ClipListResponse {
@@ -134,6 +151,22 @@ export interface CreateClipRequest {
   fileId?: string;
   origin: string;
   idempotencyKey?: string;
+  mindKind?: 'note' | 'quote' | 'link';
+}
+
+export interface CreateExternalChannelRequest {
+  name: string;
+  type: 'external';
+  provider: 'steward';
+  baseUrl: string;
+  token: string;
+  defaultTags?: string[];
+}
+
+export interface PatchSinkRequest {
+  token?: string;
+  baseUrl?: string;
+  defaultTags?: string[];
 }
 
 // ---- WebSocket protocol (/api/stream, SPEC §8.5) ----

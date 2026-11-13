@@ -51,6 +51,7 @@ export function Composer({
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [mindKind, setMindKind] = useState<'auto' | 'note' | 'quote' | 'link'>('auto');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -60,8 +61,10 @@ export function Composer({
   // keyboard over the content the user came to read.
   useEffect(() => {
     if (window.matchMedia('(min-width: 900px)').matches) textareaRef.current?.focus();
+    setMindKind('auto');
   }, [channel.id]);
 
+  const isExternal = channel.type === 'external';
   const textBytes = useMemo(() => new TextEncoder().encode(text).length, [text]);
   const tooLarge = textBytes > config.maxTextKb * 1024;
 
@@ -93,6 +96,10 @@ export function Composer({
   /** Stages files as chips; oversize files are rejected inline, not sent. */
   const stageFiles = useCallback(
     (files: File[]) => {
+      if (isExternal) {
+        onToast('Steward Mind channels are text-only');
+        return;
+      }
       if (files.length === 0) return;
       setAttachments((prev) => [
         ...prev,
@@ -109,7 +116,7 @@ export function Composer({
         }),
       ]);
     },
-    [config.maxFileMb],
+    [config.maxFileMb, isExternal, onToast],
   );
 
   // Consume a Web Share Target payload exactly once: text prefills the
@@ -208,6 +215,7 @@ export function Composer({
             text: sent,
             origin: getDeviceLabel(),
             idempotencyKey: randomId(),
+            ...(isExternal && mindKind !== 'auto' ? { mindKind } : {}),
           });
           dispatch({ type: 'clip-upserted', channelId: channel.id, clip });
           // Only clear if the user hasn't typed something else in the meantime.
@@ -292,8 +300,12 @@ export function Composer({
           ref={textareaRef}
           value={text}
           rows={3}
-          placeholder="Paste anything…"
-          aria-label="New text clip — Enter to send, Shift+Enter for a newline"
+          placeholder={isExternal ? 'Send a note, quote, or URL to Steward Mind…' : 'Paste anything…'}
+          aria-label={
+            isExternal
+              ? 'New Mind item — Enter to send, Shift+Enter for a newline'
+              : 'New text clip — Enter to send, Shift+Enter for a newline'
+          }
           onChange={(event) => setText(event.target.value)}
           onPaste={(event) => {
             // Pasting files (screenshots!) into the textarea stages them —
@@ -321,7 +333,9 @@ export function Composer({
         </button>
       </div>
       <p className="composer-hint" aria-hidden="true">
-        enter to send · shift+enter for a newline · drop or paste files anywhere
+        {isExternal
+          ? 'enter to send · urls become links · quoted text becomes a quote'
+          : 'enter to send · shift+enter for a newline · drop or paste files anywhere'}
       </p>
       {tooLarge && (
         <p className="hint">
@@ -378,24 +392,45 @@ export function Composer({
           disabled={!canSend}
           onClick={() => void handleSend()}
         >
-          {sending ? 'Sending…' : 'Send'}
+          {sending ? 'Sending…' : isExternal ? 'Send to Mind' : 'Send'}
         </button>
+        {isExternal && (
+          <label className="mind-kind">
+            <span className="sr-only">Mind kind</span>
+            <select
+              value={mindKind}
+              aria-label="Mind item kind"
+              onChange={(event) =>
+                setMindKind(event.target.value as 'auto' | 'note' | 'quote' | 'link')
+              }
+            >
+              <option value="auto">Auto</option>
+              <option value="note">Note</option>
+              <option value="quote">Quote</option>
+              <option value="link">Link</option>
+            </select>
+          </label>
+        )}
         <span className="spacer" />
-        <button type="button" className="btn" onClick={() => fileInputRef.current?.click()}>
-          Attach files
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          hidden
-          aria-label="Attach files"
-          onChange={(event) => {
-            const files = Array.from(event.target.files ?? []);
-            event.target.value = '';
-            if (files.length) stageFiles(files);
-          }}
-        />
+        {!isExternal && (
+          <>
+            <button type="button" className="btn" onClick={() => fileInputRef.current?.click()}>
+              Attach files
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              hidden
+              aria-label="Attach files"
+              onChange={(event) => {
+                const files = Array.from(event.target.files ?? []);
+                event.target.value = '';
+                if (files.length) stageFiles(files);
+              }}
+            />
+          </>
+        )}
       </div>
       {sendError && <p className="error">{sendError}</p>}
     </section>
